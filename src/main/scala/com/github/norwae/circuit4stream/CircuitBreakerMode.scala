@@ -1,5 +1,7 @@
 package com.github.norwae.circuit4stream
 
+import java.time.Instant
+
 /**
   * The mode for a circuit breaker - the breaker can either
   * bypass the failing component (for example to relieve
@@ -26,7 +28,9 @@ object CircuitBreakerMode {
   /**
     * Unique exception object to indicate the circuit breaker
     * is currently open
+    *
+    * @param originalValue value causing this exception
     */
-  case object CircuitBreakerIsOpen extends Exception("The circuit breaker is currently open", null, false, false)
+  case class CircuitBreakerIsOpen(originalValue: Any, nextReset: Instant) extends Exception("The circuit breaker is currently open", null, false, false)
 
 }

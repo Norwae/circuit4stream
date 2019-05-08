@@ -183,7 +183,10 @@ class CircuitBreakerStageTest extends WordSpec with Matchers {
         }
 
         for (_ <- 3 until 10000) {
-          probe.expectNext(Failure(CircuitBreakerMode.CircuitBreakerIsOpen))
+          val next = probe.expectNext()
+          next should matchPattern {
+            case Failure(CircuitBreakerMode.CircuitBreakerIsOpen(1, _)) =>
+          }
         }
 
         subscription.cancel()

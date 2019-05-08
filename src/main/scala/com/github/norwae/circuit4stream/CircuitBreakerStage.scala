@@ -1,5 +1,7 @@
 package com.github.norwae.circuit4stream
 
+import java.time.Instant
+
 import akka.stream.scaladsl.{BidiFlow, Flow, Keep}
 import akka.stream.stage._
 import akka.stream.{Attributes, BidiShape, Inlet, Outlet}
@@ -63,8 +65,8 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
         push(out, computed)
 
         if (open) {
-          onBreakerTripped()
           val initial = settings.resetSettings.initialResetDuration
+          onBreakerTripped(Instant.now().plusMillis(initial.toMillis))
           log.info(s"Tripped circuit breaker, will attempt to recover at $initial")
           materializer.scheduleOnce(initial, () => asyncBecomeHalfOpen.invoke(initial))
         }
@@ -96,12 +98,12 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
           log.info(s"Circuit breaker could not recover, will retry at $nextAttempt")
 
           materializer.scheduleOnce(nextAttempt, () => asyncBecomeHalfOpen.invoke(nextAttempt))
-          onBreakerTripped()
+          onBreakerTripped(Instant.now().plusMillis(nextAttempt.toMillis))
         }
       })
     }
 
-    def onBreakerTripped(): Unit
+    def onBreakerTripped(nextReset: Instant): Unit
 
     def onBreakerClosed(): Unit = {
       log.info("Circuit breaker recovered")
@@ -112,19 +114,19 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
   }
 
   private class BypassLogic extends BaseLogic {
-    override def onBreakerTripped(): Unit = {
+    override def onBreakerTripped(nextReset: Instant): Unit = {
       setHandler(fwdIn, defaultResultFwdHandler)
       setHandler(out, () => pull(in))
       setHandler(in, () => {
-        grab(in)
+        val discarded = grab(in)
         log.debug("Discarding a message for bypass mode")
-        push(out, Failure(CircuitBreakerMode.CircuitBreakerIsOpen))
+        push(out, Failure(CircuitBreakerMode.CircuitBreakerIsOpen(discarded, nextReset)))
       })
     }
   }
 
   private class BackpressureLogic extends BaseLogic {
-    override def onBreakerTripped(): Unit = {
+    override def onBreakerTripped(nextReset: Instant): Unit = {
       setHandler(fwdIn, defaultResultFwdHandler)
       // mute the pull on the output
       setHandler(out, GraphStageLogic.EagerTerminateOutput)
