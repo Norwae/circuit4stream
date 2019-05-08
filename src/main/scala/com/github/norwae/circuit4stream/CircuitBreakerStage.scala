@@ -1,4 +1,4 @@
-package com.github.norwae.circuit4akka
+package com.github.norwae.circuit4stream
 
 import akka.stream.scaladsl.{BidiFlow, Flow, Keep}
 import akka.stream.stage._
@@ -10,10 +10,11 @@ import scala.util.{Failure, Try}
 object CircuitBreakerStage {
   /**
     * Wraps a potentially-failing flow with a circuit breaker.
+    *
     * @param settings Circuit breaker configuration
-    * @param flow flow to be wrapped
-    * @tparam A input type
-    * @tparam B output type
+    * @param flow     flow to be wrapped
+    * @tparam A   input type
+    * @tparam B   output type
     * @tparam Mat materialized value type
     * @return wrapped flow
     */
@@ -53,7 +54,7 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
       override def onPull(): Unit = pull(fwdIn)
     }
 
-    private [CircuitBreakerStage] object defaultResultFwdHandler extends InHandler {
+    private[CircuitBreakerStage] object defaultResultFwdHandler extends InHandler {
       override def onPush(): Unit = {
         val computed = grab(fwdIn)
         val (filteredEvents, open) = settings.tolerance.apply(events, computed)
@@ -129,4 +130,5 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
       setHandler(out, GraphStageLogic.EagerTerminateOutput)
     }
   }
+
 }

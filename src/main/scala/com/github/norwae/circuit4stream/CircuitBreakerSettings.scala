@@ -1,10 +1,11 @@
-package com.github.norwae.circuit4akka
+package com.github.norwae.circuit4stream
 
 /**
   * Defines the parameters for a circuit breaker stage
-  * @param tolerance tolerance setting
+  *
+  * @param tolerance     tolerance setting
   * @param resetSettings reset settings
-  * @param mode mode
+  * @param mode          mode
   * @tparam A "output" type of the circuit breaker (Required to select a proper tolerance)
   */
 case class CircuitBreakerSettings[A](tolerance: Tolerance[A],

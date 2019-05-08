@@ -1,4 +1,4 @@
-package com.github.norwae.circuit4akka
+package com.github.norwae.circuit4stream
 
 /**
   * The mode for a circuit breaker - the breaker can either
@@ -6,6 +6,7 @@ package com.github.norwae.circuit4akka
   * pressure on an other system), or backpressure the stream
   */
 sealed trait CircuitBreakerMode
+
 object CircuitBreakerMode {
 
   /** Select backpressure mode - the circuit breaker will
@@ -27,4 +28,5 @@ object CircuitBreakerMode {
     * is currently open
     */
   case object CircuitBreakerIsOpen extends Exception("The circuit breaker is currently open", null, false, false)
+
 }

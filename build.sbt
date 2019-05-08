@@ -1,4 +1,4 @@
-name := "akka-stream-circuit-breaker"
+name := "circuit4stream"
 organization := "com.github.norwae"
 version := "0.1"
 scalaVersion := "2.12.8"
