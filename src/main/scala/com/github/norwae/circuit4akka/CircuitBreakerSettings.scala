@@ -1,4 +1,4 @@
-package com.github.norwae.akkacb
+package com.github.norwae.circuit4akka
 
 /**
   * Defines the parameters for a circuit breaker stage

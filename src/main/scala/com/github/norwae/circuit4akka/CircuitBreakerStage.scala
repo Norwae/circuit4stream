@@ -1,4 +1,4 @@
-package com.github.norwae.akkacb
+package com.github.norwae.circuit4akka
 
 import akka.stream.scaladsl.{BidiFlow, Flow, Keep}
 import akka.stream.stage._
@@ -24,7 +24,6 @@ object CircuitBreakerStage {
 }
 
 class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extends GraphStage[BidiShape[In, In, Try[Out], Try[Out]]] {
-
   private val in = Inlet[In]("main.in")
   private val fwdOut = Outlet[In]("fwd.out")
   private val fwdIn = Inlet[Try[Out]]("fwd.in")
@@ -91,12 +90,12 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
 
         if (result.isSuccess) onBreakerClosed()
         else {
-          onBreakerTripped()
           val escalated = resetDuration * settings.resetSettings.backoffFactor
           val nextAttempt = (escalated max settings.resetSettings.maximumResetDuration).asInstanceOf[FiniteDuration]
           log.info(s"Circuit breaker could not recover, will retry at $nextAttempt")
 
-          materializer.scheduleOnce(nextAttempt, () => asyncBecomeHalfOpen.invoke(nextAttempt)) : Unit
+          materializer.scheduleOnce(nextAttempt, () => asyncBecomeHalfOpen.invoke(nextAttempt))
+          onBreakerTripped()
         }
       })
     }

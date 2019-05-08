@@ -1,4 +1,4 @@
-package com.github.norwae.akkacb
+package com.github.norwae.circuit4akka
 
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, Materializer}

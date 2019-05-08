@@ -1,8 +1,8 @@
-package com.github.norwae.akkacb
+package com.github.norwae.circuit4akka
 
 import java.time.Instant
 
-import com.github.norwae.akkacb.Tolerance.FailureFrequency
+import com.github.norwae.circuit4akka.Tolerance.FailureFrequency
 import org.scalatest.{LoneElement, Matchers, WordSpec}
 
 import scala.concurrent.duration._

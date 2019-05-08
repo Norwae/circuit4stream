@@ -1,4 +1,4 @@
-package com.github.norwae.akkacb
+package com.github.norwae.circuit4akka
 
 /**
   * The mode for a circuit breaker - the breaker can either
