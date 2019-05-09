@@ -1,5 +1,7 @@
 # Circuit4Stream
 
+![build status](https://img.shields.io/travis/Norwae/circuit4stream.svg)
+
 This module packages a [circuit breaker](https://microservices.io/patterns/reliability/circuit-breaker.html) that can 
 be used to avoid overloading or otherwise depending on a temporarily unavailable (remote) system.
 
