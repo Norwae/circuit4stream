@@ -65,6 +65,9 @@ data can be recovered from this failure.
 
 # Examples
 
+This section contains some examples on how to use the library. Further, more advanced use cases can be seen in the test sources, especially in the 
+File `CircuitBreakerStageTest`.
+
 ## Simple REST call 
 
 One of the most common patterns is integrating an external call via HTTP. This might originally look something
@@ -97,5 +100,3 @@ UserLookupQueue.
   runWith(UserQueryLog.sinkWithTrySupport)
 ````
 
-Further, more advanced use cases can be seen in the test sources, especially in the 
-File `CircuitBreakerStageTest`.

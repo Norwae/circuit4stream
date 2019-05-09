@@ -10,10 +10,15 @@ import scala.util.{Failure, Success}
 
 class ToleranceTest extends WordSpec with Matchers with LoneElement {
   "The FailureFraction tolerance mode" must {
-    val sut = Tolerance.FailureFraction(0.5, 1.second)
+    val sut = Tolerance.FailureFraction(0.5, 1.second, 2)
 
     "start with a clean history" in {
       sut.initialLog shouldBe empty
+    }
+
+    "only break when a minimum of events has been recorded" in {
+      val (_, open) = sut(Vector.empty, Failure(new InterruptedException))
+      open shouldBe false // 100% failure rate, but not enough elements seen
     }
 
     "clean expired events" in {
