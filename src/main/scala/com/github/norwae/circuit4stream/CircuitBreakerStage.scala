@@ -11,8 +11,9 @@ import scala.util.{Failure, Try}
 /**
   * bidirectional stage that can wrap a "flow" and perform circuit-breaker operations on it, guiding
   * its input and output handling
+  *
   * @param settings settings for this circuit breaker
-  * @tparam In input type
+  * @tparam In  input type
   * @tparam Out output type
   */
 
@@ -32,7 +33,7 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
   }
 
   // visible for testing
-  private [circuit4stream] def calculateNextDelay(current: FiniteDuration): FiniteDuration = {
+  private[circuit4stream] def calculateNextDelay(current: FiniteDuration): FiniteDuration = {
     val escalated = current * settings.resetSettings.backoffFactor
     val max = settings.resetSettings.maximumResetDuration
 
@@ -91,16 +92,16 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
       })
       setHandler(fwdIn, () => {
         val result = grab(fwdIn)
-        emit(out, result)
+        emit(out, result, () =>
+          if (result.isSuccess) onBreakerClosed()
+          else {
+            val nextDelay = calculateNextDelay(resetDuration)
+            log.info(s"Circuit breaker could not recover, will retry at $nextDelay")
 
-        if (result.isSuccess) onBreakerClosed()
-        else {
-          val nextAttempt = calculateNextDelay(resetDuration)
-          log.info(s"Circuit breaker could not recover, will retry at $nextAttempt")
-
-          materializer.scheduleOnce(nextAttempt, () => asyncBecomeHalfOpen.invoke(nextAttempt))
-          onBreakerTripped(Instant.now().plusMillis(nextAttempt.toMillis))
-        }
+            materializer.scheduleOnce(nextDelay, () => asyncBecomeHalfOpen.invoke(nextDelay))
+            onBreakerTripped(Instant.now().plusMillis(nextDelay.toMillis))
+          }
+        )
       })
     }
 
