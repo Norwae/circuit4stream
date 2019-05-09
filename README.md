@@ -62,3 +62,40 @@ stream will stall for the reset duration, only resuming processing for the singl
 until it can be closed. For bypass mode, the stream will instead speed up, skipping the
 stage entirely and instead producing a single failure element for each input element. The input
 data can be recovered from this failure.
+
+# Examples
+
+## Simple REST call 
+
+One of the most common patterns is integrating an external call via HTTP. This might originally look something
+like this:
+````scala
+def fetchUsers(id: String): Future[User] = ???
+
+val userLookup = Flow[String].mapAsync(16)(fetchUsers _)
+
+UserLookupQueue.
+  source.
+  via(userLookup).
+  runWith(UserQueryLog.sink)
+````
+
+This is a very simple model, but will fail brutally once there is
+even a single lookup fails. With a circuitBreaker, instead we would use the
+following:
+
+````scala
+def fetchUsers(id: String): Future[User] = ???
+
+val settings = CircuitBreakerSettings(Tolerance.FailureFraction(0.1, 1.minute), ResetSettings(.5.seconds))
+val rawUserLookup = Flow[String].mapAsyncRecover(16)(fetchUsers _)
+val userLookup = CircuitBreaker(settings, rawUserLookup)
+
+UserLookupQueue.
+  source.
+  via(userLookup).
+  runWith(UserQueryLog.sinkWithTrySupport)
+````
+
+Further, more advanced use cases can be seen in the test sources, especially in the 
+File `CircuitBreakerStageTest`.

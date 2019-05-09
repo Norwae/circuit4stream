@@ -32,6 +32,40 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
   private val defaultSettings =
     CircuitBreakerSettings[Int](Tolerance.FailureFrequency(3, 1.second), ResetSettings(1.second), CircuitBreakerMode.Backpressure)
 
+  "The pimped circuit breaker syntax" must {
+    import CircuitBreaker._
+    "provide syntactic sugar for mapAsync" in {
+      val flow: Flow[Int, Try[Int], NotUsed] = Flow[Int].mapAsyncRecover(1)(Future.successful)
+      val src = Source.single(1).via(flow)
+      whenReady(src.runWith(Sink.head[Try[Int]])) { it =>
+        it shouldEqual Success(1)
+      }
+    }
+
+    "provide syntactic sugar for mapAsyncUnordered" in {
+      val flow: Flow[Int, Try[Int], NotUsed] = Flow[Int].mapAsyncUnorderedRecover(1)(Future.successful)
+      val src = Source.single(1).via(flow)
+      whenReady(src.runWith(Sink.head[Try[Int]])) { it =>
+        it shouldEqual Success(1)
+      }
+    }
+
+    "be relatively readable in the linear DSL" in {
+      val rawFlow = Flow[Int].mapAsyncRecover(1)(_ => Future.failed(new IOException()))
+      val flow = CircuitBreaker(defaultSettings, rawFlow)
+
+      val result = Source.single(1).
+        via(flow).
+        runWith(Sink.head[Try[Int]])
+
+      whenReady(result) {
+        _ should matchPattern {
+          case Failure(_ : IOException) =>
+        }
+      }
+    }
+  }
+
   "A circuit breaker" when {
     "operating normally" should {
       "shut down cleanly with no elements" in assertAllStagesStopped {
@@ -239,36 +273,6 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
         }
 
         subscription.cancel()
-      }
-    }
-  }
-
-  "The pimped circuit breaker syntax" must {
-    import CircuitBreaker._
-    "provide syntactic sugar for mapAsync" in {
-      val value: Flow[Int, Try[Int], NotUsed] = Flow[Int].mapAsyncRecover(1)(Future.successful)
-      val src = Source.single(1).via(value)
-      whenReady(src.runWith(Sink.head[Try[Int]])) { it =>
-        it shouldEqual Success(1)
-      }
-    }
-
-    "provide syntactic sugar for mapAsyncUnordered" in {
-      val value: Flow[Int, Try[Int], NotUsed] = Flow[Int].mapAsyncUnorderedRecover(1)(Future.successful)
-      val src = Source.single(1).via(value)
-      whenReady(src.runWith(Sink.head[Try[Int]])) { it =>
-        it shouldEqual Success(1)
-      }
-    }
-
-    "Be relatively readable in the linear DSL" in {
-      val result = Source.single(1).
-        via(CircuitBreaker(defaultSettings, Flow[Int].mapAsyncRecover(1)(_ => Future.failed(new IOException())))).
-        runWith(Sink.head[Try[Int]])
-      whenReady(result) {
-        _ should matchPattern {
-          case Failure(_ : IOException) =>
-        }
       }
     }
   }
