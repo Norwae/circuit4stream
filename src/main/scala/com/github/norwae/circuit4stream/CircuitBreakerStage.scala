@@ -11,6 +11,10 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
+/**
+  * builders and convenience functions to work with the circuit breaker
+  * stage.
+  */
 object CircuitBreakerStage {
   /**
     * Wraps a potentially-failing flow with a circuit breaker.
@@ -30,7 +34,7 @@ object CircuitBreakerStage {
   /**
     *
     * Adds operations to map async operations to flows
-    * @define sorryForEc Unfortunately, this operation will require an execution context, since the parasitic execution context introduced in scala 2.13 is not yet available
+    * @define sorryForEC Unfortunately, this operation will require an execution context, since the parasitic execution context introduced in scala 2.13 is not yet available
     * @param fo flow
     * @tparam X input
     * @tparam A intermediate output
@@ -80,6 +84,14 @@ object CircuitBreakerStage {
     }
   }
 }
+
+/**
+  * bidirectional stage that can wrap a "flow" and perform circuit-breaker operations on it, guiding
+  * its input and output handling
+  * @param settings settings for this circuit breaker
+  * @tparam In input type
+  * @tparam Out output type
+  */
 
 class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extends GraphStage[BidiShape[In, In, Try[Out], Try[Out]]] {
   private val in = Inlet[In]("main.in")

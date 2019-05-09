@@ -18,7 +18,7 @@ import scala.util.Try
   */
 trait Tolerance[-A] {
   /** Event log type. Usually some kind of collection.
-    * The implementation of [[apply()]] should perform any housekeeping
+    * The implementation of [[Tolerance.apply()]] should perform any housekeeping
     * required to avoid it growing without bound.
     */
   type EventLog
@@ -43,7 +43,19 @@ trait Tolerance[-A] {
 
 object Tolerance {
 
-  case class FailureFraction(toleratedFraction: Double, per: FiniteDuration) extends Tolerance[Any] {
+  /**
+    * Tolerates failures (within a certain timeframe) up to a fraction of total
+    * seen elements. The event log will create a single object for each event within
+    * the evaluated time frame, but not retain a reference to the result. If there were fewer elements
+    * in the timeframe than some defined minimum, the breaker will stay closed, in order to avoid an initial
+    * failure triggering the breaker immediately
+    *
+    * @param toleratedFraction fraction of elements that may fail. Inclusive
+    * @param per               timeframe to evaluate
+    * @param minimumEvents     minimum of events to evaluate the condition on
+    */
+  case class FailureFraction(toleratedFraction: Double, per: FiniteDuration, minimumEvents: Int = 1) extends Tolerance[Any] {
+    require(toleratedFraction <= 1.0)
 
     final class Event(val time: Instant, val failed: Boolean)
 
@@ -55,19 +67,25 @@ object Tolerance {
       val cutoff = Instant.now().minusMillis(per.toMillis)
       val relevantEvents = events.filter(_.time isAfter cutoff) :+ new Event(Instant.now(), next.isFailure)
 
-      val (good, bad) = relevantEvents.foldLeft((0, 0)) { (p, event) =>
-        val (successes, failures) = p
+      if (relevantEvents.length < minimumEvents) {
+        (relevantEvents, false)
+      } else {
+        val bad = relevantEvents.count(_.failed)
 
-        if (event.failed) (successes, failures + 1)
-        else (successes + 1, failures)
+        val failedFraction = bad.toDouble / relevantEvents.length
+
+        (relevantEvents, failedFraction > toleratedFraction)
       }
-
-      val failedFraction = bad.toDouble / (good + bad)
-
-      (relevantEvents, failedFraction > toleratedFraction)
     }
   }
 
+  /**
+    * Tolerates up to a total number of events for a given timeframe. The
+    * event log will create an object for each failure encountered during the
+    * timeframe.
+    * @param incidents nr of incidents after which the breaker should open
+    * @param per duration to evaluate
+    */
   case class FailureFrequency(incidents: Int, per: FiniteDuration) extends Tolerance[Any] {
     type EventLog = Vector[Instant]
 
