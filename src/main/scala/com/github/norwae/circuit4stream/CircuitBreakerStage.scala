@@ -2,12 +2,15 @@ package com.github.norwae.circuit4stream
 
 import java.time.Instant
 
-import akka.stream.scaladsl.{BidiFlow, Flow, Keep}
+import akka.NotUsed
+import akka.stream.scaladsl.{BidiFlow, Flow, FlowOps, Keep}
 import akka.stream.stage._
 import akka.stream.{Attributes, BidiShape, Inlet, Outlet}
 
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-import scala.util.{Failure, Try}
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 object CircuitBreakerStage {
   /**
@@ -23,6 +26,52 @@ object CircuitBreakerStage {
   def apply[A, B, Mat](settings: CircuitBreakerSettings[B], flow: Flow[A, Try[B], Mat]): Flow[A, Try[B], Mat] = {
     val bidi = BidiFlow.fromGraph(new CircuitBreakerStage[A, B](settings))
     bidi.joinMat(flow)(Keep.right)
+  }
+
+  implicit class FlowOpsPimp[X, A, M](val fo: Flow[X, A, M]) extends AnyVal {
+    private def adaptOperator[B](f: A => Future[B])(implicit ec: ExecutionContext) = {
+      f.andThen { result =>
+        result.map(Success.apply).recover {
+          case NonFatal(e) => Failure(e)
+        }
+      }
+    }
+
+    /**
+      * Variant of [[FlowOps.mapAsync()]] which does not map
+      * future failures to stream failures, but instead use the
+      * `Try` monad to capture them.
+      *
+      * Unfortunately, this operation will require an exection
+      * context, since the parasitic execution context introduced
+      * in scala 2.13 is not yet available
+      * @param parallelism nr of parallel invocactions
+      * @param f operation
+      * @param ec execution context
+      * @tparam B result type
+      * @return adapted flow
+      */
+    def mapAsyncRecover[B](parallelism: Int)(f: A => Future[B])(implicit ec: ExecutionContext): Flow[X, Try[B], M] = {
+      fo.mapAsync(parallelism)(adaptOperator(f))
+    }
+
+    /**
+      * Variant of [[FlowOps.mapAsyncUnordered()]] which does not map
+      * future failures to stream failures, but instead use the
+      * `Try` monad to capture them.
+      *
+      * Unfortunately, this operation will require an exection
+      * context, since the parasitic execution context introduced
+      * in scala 2.13 is not yet available
+      * @param parallelism nr of parallel invocactions
+      * @param f operation
+      * @param ec execution context
+      * @tparam B result type
+      * @return adapted flow
+      */
+    def mapAsyncUnorderedRecover[B](parallelism: Int)(f: A => Future[B])(implicit ec: ExecutionContext): Flow[X, Try[B], M] = {
+      fo.mapAsyncUnordered(parallelism)(adaptOperator(f))
+    }
   }
 }
 

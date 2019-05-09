@@ -1,17 +1,20 @@
 package com.github.norwae.circuit4stream
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{BidiFlow, Flow, Sink, Source}
 import akka.stream.testkit.TestSubscriber
 import akka.stream.testkit.scaladsl.StreamTestKit.assertAllStagesStopped
 import akka.stream.{ActorMaterializer, Materializer}
 import com.typesafe.config.{Config, ConfigFactory}
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
-class CircuitBreakerStageTest extends WordSpec with Matchers {
+class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
   private val config: Config =
     ConfigFactory.
       parseString("akka.stream.materializer.debug.fuzzing-mode = on").
@@ -233,6 +236,27 @@ class CircuitBreakerStageTest extends WordSpec with Matchers {
         }
 
         subscription.cancel()
+      }
+    }
+  }
+
+  "The pimped circuit breaker syntax" must {
+    import CircuitBreakerStage._
+    "provide syntactic sugar for mapAsync" in {
+      import materializer.executionContext
+      val value: Flow[Int, Try[Int], NotUsed] = Flow[Int].mapAsyncRecover(1)(Future.successful)
+      val src = Source.single(1).via(value)
+      whenReady(src.runWith(Sink.head[Try[Int]])) { it =>
+        it shouldEqual Success(1)
+      }
+    }
+
+    "provide syntactic sugar for mapAsyncUnordered" in {
+      import materializer.executionContext
+      val value: Flow[Int, Try[Int], NotUsed] = Flow[Int].mapAsyncUnorderedRecover(1)(Future.successful)
+      val src = Source.single(1).via(value)
+      whenReady(src.runWith(Sink.head[Try[Int]])) { it =>
+        it shouldEqual Success(1)
       }
     }
   }
