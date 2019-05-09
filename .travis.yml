@@ -6,4 +6,5 @@ branches:
     - master
 cache:
   directories:
-    - .ivy2
+    - ~/.ivy2
+    - ~/.m2
