@@ -14,7 +14,7 @@ import org.scalatest.{Matchers, WordSpec}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Random, Success, Try}
 
 class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
   private val config: Config =
@@ -30,7 +30,7 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
   private val alwaysSucceed = Flow.fromFunction(Success.apply[Int])
   private val alwaysFail = Flow.fromFunction((_: Any) => expectedFailure)
   private val defaultSettings =
-    CircuitBreakerSettings[Int](Tolerance.FailureFrequency(3, 1.second), ResetSettings(1.second, 1.second, 2), CircuitBreakerMode.Backpressure)
+    CircuitBreakerSettings[Int](Tolerance.FailureFrequency(3, 1.second), ResetSettings(1.second), CircuitBreakerMode.Backpressure)
 
   "A circuit breaker" when {
     "operating normally" should {
@@ -270,6 +270,34 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
           case Failure(_ : IOException) =>
         }
       }
+    }
+  }
+
+  "The exponential backoff" must {
+    def makeSut(max: Duration = 1.day) = {
+      val reset = ResetSettings(1.second, max, 5)
+      val settings = CircuitBreakerSettings(Tolerance.FailureFraction(1, 1.second), reset)
+      new CircuitBreakerStage(settings).calculateNextDelay _
+    }
+
+    "increase by the configured factor" in {
+      val sut = makeSut()
+      val first = Random.nextInt(20) + 1
+      sut(first.seconds) shouldEqual first.seconds * 5
+    }
+
+    "ignore infinite maximums" in {
+      val sut = makeSut(Duration.Inf)
+      val first = Random.nextInt(20) + 1
+      sut(first.days) shouldEqual first.days * 5
+
+    }
+
+    "cap the growth when required" in {
+      val sut = makeSut()
+      val first = Random.nextInt(20) + 5
+
+      sut(first.hours) shouldEqual 1.day
     }
   }
 }

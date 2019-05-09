@@ -31,6 +31,15 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
     }
   }
 
+  // visible for testing
+  private [circuit4stream] def calculateNextDelay(current: FiniteDuration): FiniteDuration = {
+    val escalated = current * settings.resetSettings.backoffFactor
+    val max = settings.resetSettings.maximumResetDuration
+    (if (!max.isFinite()) escalated
+    else if (escalated > max) max
+    else escalated).asInstanceOf[FiniteDuration]
+  }
+
   private abstract class BaseLogic extends GraphStageLogic(shape) with StageLogging {
     private val asyncBecomeHalfOpen = getAsyncCallback(becomeHalfOpen)
 
@@ -83,8 +92,7 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
 
         if (result.isSuccess) onBreakerClosed()
         else {
-          val escalated = resetDuration * settings.resetSettings.backoffFactor
-          val nextAttempt = (escalated max settings.resetSettings.maximumResetDuration).asInstanceOf[FiniteDuration]
+          val nextAttempt = calculateNextDelay(resetDuration)
           log.info(s"Circuit breaker could not recover, will retry at $nextAttempt")
 
           materializer.scheduleOnce(nextAttempt, () => asyncBecomeHalfOpen.invoke(nextAttempt))
