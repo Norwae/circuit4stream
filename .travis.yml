@@ -4,3 +4,6 @@ scala:
 branches:
   only:
     - master
+cache:
+  directories:
+    - .ivy2
