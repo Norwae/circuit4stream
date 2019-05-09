@@ -35,9 +35,12 @@ class CircuitBreakerStage[In, Out](settings: CircuitBreakerSettings[Out]) extend
   private [circuit4stream] def calculateNextDelay(current: FiniteDuration): FiniteDuration = {
     val escalated = current * settings.resetSettings.backoffFactor
     val max = settings.resetSettings.maximumResetDuration
-    (if (!max.isFinite()) escalated
-    else if (escalated > max) max
-    else escalated).asInstanceOf[FiniteDuration]
+
+    val nextDelay =
+      if (max.isFinite() && max < escalated) max
+      else escalated
+
+    nextDelay.asInstanceOf[FiniteDuration]
   }
 
   private abstract class BaseLogic extends GraphStageLogic(shape) with StageLogging {
