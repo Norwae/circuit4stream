@@ -1,5 +1,7 @@
 package com.github.norwae.circuit4stream
 
+import java.io.IOException
+
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{BidiFlow, Flow, Sink, Source}
@@ -22,6 +24,7 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
 
   implicit lazy val system: ActorSystem = ActorSystem("test", config)
   implicit lazy val materializer: Materializer = ActorMaterializer()
+  implicit lazy val ec = materializer.executionContext
 
   private val expectedFailure = Failure(new UnsupportedOperationException())
   private val alwaysSucceed = Flow.fromFunction(Success.apply[Int])
@@ -243,7 +246,6 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
   "The pimped circuit breaker syntax" must {
     import CircuitBreakerStage._
     "provide syntactic sugar for mapAsync" in {
-      import materializer.executionContext
       val value: Flow[Int, Try[Int], NotUsed] = Flow[Int].mapAsyncRecover(1)(Future.successful)
       val src = Source.single(1).via(value)
       whenReady(src.runWith(Sink.head[Try[Int]])) { it =>
@@ -252,11 +254,21 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
     }
 
     "provide syntactic sugar for mapAsyncUnordered" in {
-      import materializer.executionContext
       val value: Flow[Int, Try[Int], NotUsed] = Flow[Int].mapAsyncUnorderedRecover(1)(Future.successful)
       val src = Source.single(1).via(value)
       whenReady(src.runWith(Sink.head[Try[Int]])) { it =>
         it shouldEqual Success(1)
+      }
+    }
+
+    "Be relatively readable in the linear DSL" in {
+      val result = Source.single(1).
+        via(CircuitBreakerStage(defaultSettings, Flow[Int].mapAsyncRecover(1)(_ => Future.failed(new IOException())))).
+        runWith(Sink.head[Try[Int]])
+      whenReady(result) {
+        _ should matchPattern {
+          case Failure(_ : IOException) =>
+        }
       }
     }
   }
