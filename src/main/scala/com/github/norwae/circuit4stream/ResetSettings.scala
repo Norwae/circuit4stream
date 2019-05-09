@@ -9,6 +9,6 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
   * @param maximumResetDuration maximum duration between two attempts
   * @param backoffFactor        increment between two attempts, must be >= 1
   */
-case class ResetSettings(initialResetDuration: FiniteDuration, maximumResetDuration: Duration, backoffFactor: Double) {
+case class ResetSettings(initialResetDuration: FiniteDuration, maximumResetDuration: Duration = Duration.Inf, backoffFactor: Double = 2) {
   require(backoffFactor >= 1)
 }

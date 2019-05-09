@@ -244,7 +244,7 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
   }
 
   "The pimped circuit breaker syntax" must {
-    import CircuitBreakerStage._
+    import CircuitBreaker._
     "provide syntactic sugar for mapAsync" in {
       val value: Flow[Int, Try[Int], NotUsed] = Flow[Int].mapAsyncRecover(1)(Future.successful)
       val src = Source.single(1).via(value)
@@ -263,7 +263,7 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
 
     "Be relatively readable in the linear DSL" in {
       val result = Source.single(1).
-        via(CircuitBreakerStage(defaultSettings, Flow[Int].mapAsyncRecover(1)(_ => Future.failed(new IOException())))).
+        via(CircuitBreaker(defaultSettings, Flow[Int].mapAsyncRecover(1)(_ => Future.failed(new IOException())))).
         runWith(Sink.head[Try[Int]])
       whenReady(result) {
         _ should matchPattern {
