@@ -90,7 +90,7 @@ following:
 ````scala
 def fetchUsers(id: String): Future[User] = ???
 
-val settings = CircuitBreakerSettings(Tolerance.FailureFraction(0.1, 1.minute), ResetSettings(.5.seconds))
+val settings = CircuitBreakerSettings(Tolerance.failureFraction(0.1, 1.minute), ResetSettings(.5.seconds))
 val rawUserLookup = Flow[String].mapAsyncRecover(16)(fetchUsers _)
 val userLookup = CircuitBreaker(settings, rawUserLookup)
 
@@ -100,3 +100,20 @@ UserLookupQueue.
   runWith(UserQueryLog.sinkWithTrySupport)
 ````
 
+## Custom Tolerance 
+
+Suppose there is a class of failures that need to open the circuit immediately. For other uses, we use the predefined
+`FailureFrequency` Tolerance.
+
+````scala
+object FailureFrequencyWithFatal extends Tolerance.FailureFrequency(10, 1.minute){
+  override def apply(events: EventLog, next: Try[Any]): (EventLog, Boolean) = {
+    val openForException = next.failure.exist(_.isInstanceOf[BadException])   
+    
+    val (nextLog, openRegularly) = super.apply(events, next)
+    (nextLog, openForException || openRegularly)
+  }
+}
+
+val settings = CircuitBreakerSettings(FailureFrequencyWithFatal, ResetSettings(.5.seconds))
+````

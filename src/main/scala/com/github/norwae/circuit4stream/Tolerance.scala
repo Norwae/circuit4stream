@@ -43,6 +43,12 @@ trait Tolerance[-A] {
 
 object Tolerance {
 
+  def failureFraction(toleratedFraction: Double, per: FiniteDuration, minimumEvents: Int = 1) =
+    new FailureFraction(toleratedFraction, per, minimumEvents)
+
+  def failureFrequency(incidents: Int, per: FiniteDuration) =
+    new FailureFrequency(incidents, per)
+
   /**
     * Tolerates failures (within a certain timeframe) up to a fraction of total
     * seen elements. The event log will create a single object for each event within
@@ -50,11 +56,13 @@ object Tolerance {
     * in the timeframe than some defined minimum, the breaker will stay closed, in order to avoid an initial
     * failure triggering the breaker immediately
     *
+    * This class is intentionally not declared as a case class to allow reuse
+    * of this logic in special-case implementations
     * @param toleratedFraction fraction of elements that may fail. Inclusive
     * @param per               timeframe to evaluate
     * @param minimumEvents     minimum of events to evaluate the condition on
     */
-  case class FailureFraction(toleratedFraction: Double, per: FiniteDuration, minimumEvents: Int = 1) extends Tolerance[Any] {
+  class FailureFraction(toleratedFraction: Double, per: FiniteDuration, minimumEvents: Int) extends Tolerance[Any] {
     require(toleratedFraction <= 1.0)
 
     final class Event(val time: Instant, val failed: Boolean)
@@ -83,10 +91,14 @@ object Tolerance {
     * Tolerates up to a total number of events for a given timeframe. The
     * event log will create an object for each failure encountered during the
     * timeframe.
+    *
+    * This class is intentionally not declared as a case class to allow reuse
+    * of this logic in special-case implementation.
+    *
     * @param incidents nr of incidents after which the breaker should open
     * @param per duration to evaluate
     */
-  case class FailureFrequency(incidents: Int, per: FiniteDuration) extends Tolerance[Any] {
+  class FailureFrequency(incidents: Int, per: FiniteDuration) extends Tolerance[Any] {
     type EventLog = Vector[Instant]
 
     override def initialLog: EventLog = Vector.empty

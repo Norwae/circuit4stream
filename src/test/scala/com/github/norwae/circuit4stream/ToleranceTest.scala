@@ -10,7 +10,7 @@ import scala.util.{Failure, Success}
 
 class ToleranceTest extends WordSpec with Matchers with LoneElement {
   "The FailureFraction tolerance mode" must {
-    val sut = Tolerance.FailureFraction(0.5, 1.second, 2)
+    val sut = Tolerance.failureFraction(0.5, 1.second, 2)
 
     "start with a clean history" in {
       sut.initialLog shouldBe empty
@@ -64,7 +64,7 @@ class ToleranceTest extends WordSpec with Matchers with LoneElement {
   }
 
   "The FailureFrequency tolerance mode" must {
-    val sut = FailureFrequency(5, 1.second)
+    val sut = Tolerance.failureFrequency(5, 1.second)
 
     "start with a clean history" in {
       sut.initialLog shouldBe empty

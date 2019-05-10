@@ -30,7 +30,7 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
   private val alwaysSucceed = Flow.fromFunction(Success.apply[Int])
   private val alwaysFail = Flow.fromFunction((_: Any) => expectedFailure)
   private val defaultSettings =
-    CircuitBreakerSettings[Int](Tolerance.FailureFrequency(3, 1.second), ResetSettings(1.second), CircuitBreakerMode.Backpressure)
+    CircuitBreakerSettings[Int](Tolerance.failureFrequency(3, 1.second), ResetSettings(1.second), CircuitBreakerMode.Backpressure)
 
   "The pimped circuit breaker syntax" must {
     import CircuitBreaker._
@@ -280,7 +280,7 @@ class CircuitBreakerStageTest extends WordSpec with Matchers with ScalaFutures {
   "The exponential backoff" must {
     def makeSut(max: Duration = 1.day) = {
       val reset = ResetSettings(1.second, max, 5)
-      val settings = CircuitBreakerSettings(Tolerance.FailureFraction(1, 1.second), reset)
+      val settings = CircuitBreakerSettings(Tolerance.failureFraction(1, 1.second), reset)
       new CircuitBreakerStage(settings).calculateNextDelay _
     }
 
