@@ -1,6 +1,6 @@
 name := "circuit4stream"
 organization := "com.github.norwae"
-version := "1.0.0-SNAPSHOT"
+version := "1.0.0"
 scalaVersion := "2.12.8"
 publishMavenStyle := true
 description := """
