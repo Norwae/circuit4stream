@@ -1,6 +1,6 @@
 name := "circuit4stream"
 organization := "com.github.norwae"
-version := "1.0.0"
+version := "1.1.0-SNAPSHOT"
 scalaVersion := "2.12.8"
 publishMavenStyle := true
 description := """
@@ -39,3 +39,10 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.22" % Test,
   "org.scalatest" %% "scalatest" % "3.0.5" % Test
 )
+publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
