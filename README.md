@@ -13,6 +13,11 @@ to be handled, but they will occur in a predictable, and hopefully usable manner
 
 ## Usage
 
+To include "circuit4stream" in your sbt project, simply declare the following dependency
+in your `build.sbt`
+
+    libraryDependencies += "com.github.norwae" %% "circuit4stream" % "1.0.0"
+
 The chief usage scenario is wrapping an interaction with a (possibly remote) other system with the chance
 of failure. This remote interaction is chiefly modelled as a `Flow[A, Try[B]]`. Such a flow 
 can easily be protected by a circuit breaker by just wrapping it via `CircuitBreaker(theFlow)`
